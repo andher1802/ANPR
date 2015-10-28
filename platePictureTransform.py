@@ -39,6 +39,7 @@ def main():
 	for dirpath, dirname, filename in walk(dirpath):
 		filePDDI.extend(filename)
 
+        #Performing a test for the algorithm
 	testSet = []
 	testClass = []
 	testLabel = []
