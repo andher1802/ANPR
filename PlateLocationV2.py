@@ -120,29 +120,22 @@ def trainSVM():
 		image = np.array(Image.open(filename).convert('L'))
 		# image = np.array(Image.open(filename))
 		stackedImage = np.hstack(image)
-		# print stackedImage
-		# cv2.imwrite('./output/imagesUINT8/'+element,image,)
-		# cv2.imwrite('./output/TestSet/'+element,image,)
 		label = element.split('_')
-		# print label[0]
 		if label[0] == 'Y':
 			numberLabel = 1
 		elif label[0] == 'N': 
 			numberLabel = -1
 		trainingClasses.append(numberLabel)
 		trainingSet.append(stackedImage.tolist())
-
 	prob = svm_problem(trainingClasses,trainingSet)
 	m = svm_train(prob, '-t 0 -c 1')
 	# m = svm_train(prob, '-t 0 -c 1')
 	return m
 
 def main():
-	# dirpath = '/home/andres/Documents/PythonDevelopment/ComputerVisionCourse/output/TestSetGray/'
 	dirpath = '../Images/TestSet/'
 	filePDDI = []
 	model = trainSVM()
-
 	#Parameters for testing
 	step = 5
 	score = 0.5
@@ -236,10 +229,8 @@ def main():
 		selectecBand = np.vsplit(potentialPlate[modulusImage:], chunksNumber)[indexMax]
 
 		tempStartV = binaryImage.shape[0]-selectecBand.shape[0]
-		# print 'shapes',binaryImage.shape, selectecBand.shape, binaryImage[tempStartV:,:].shape
 		VSum = np.sum(binaryImage[tempStartV:,:], axis=0) 
 		HSum = np.sum(binaryImage[tempStartV:,:], axis=1)
-		# print 'lengths H and V',len(HSum), len(VSum)
 
 		tempSizeLeft = 0
 		tempSizeRight = 0
@@ -274,9 +265,6 @@ def main():
 		SizeRight = selectecBand.shape[0]-tempSizeRight
 		SizeBottom = selectecBand.shape[1]-tempSizeBottom
 		preSelectecBand = selectecBand[tempSizeLeft:SizeRight,tempSizeTop:SizeBottom]
-		# print 'start left, start top, end right, end bottom', tempSizeLeft, tempSizeTop, SizeRight, SizeBottom
-		# print 'size horizontal, size vertical', SizeRight-tempSizeLeft, SizeBottom-tempSizeTop
-		# print 'shape original, shape modified', selectecBand.shape, preSelectecBand.shape 
 
 		selectecBand = preSelectecBand
 		modulusV = selectecBand.shape[0] % 30 # shape is given by column, row order 
