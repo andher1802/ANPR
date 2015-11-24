@@ -1,25 +1,32 @@
 import numpy as np
 import cv2
+import string
+
+from PIL import Image
+from pylab import *
+from scipy.ndimage import filters
 
 def orderPoints(pts):
     rect = np.zeros((4,2), dtype = 'float32')
-    #print rect 
+    # print rect 
     s = np.sum(pts, axis = 1)
-    #print s
+    # print s
     rect[0]=pts[np.argmin(s)]
     rect[2]=pts[np.argmax(s)]
+
     diff = np.diff(pts, axis=1)
-    #print diff
+    # print diff
+    
     rect[1]=pts[np.argmin(diff)]
     rect[3]=pts[np.argmax(diff)]
-    #print pts
-    #print rect
+    # print pts
+    # print rect
     return rect
     #print 'finished order points'
 
 def fourPointsTransform(image, pts):
     #Order points
-    print pts
+    # print pts
     rect = orderPoints(pts)
     (tl, tr, br, bl) = rect
     #Compute distances
@@ -35,12 +42,110 @@ def fourPointsTransform(image, pts):
     #print maxHeight
     #Create a new array with the new coordinates
     dst = np.array([[0,0],[maxWidth-1,0],[maxWidth-1,maxHeight-1],[0,maxHeight-1]], dtype="float32")
-    #Compute the perspective transfor matrix a apply it
+    # print dst
+    #Compute the perspective transform matrix a apply it
     M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image,M, (maxWidth, maxHeight))    
+    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))   
     return warped
 
+def compute_harris_response(im,sigma=3):
+	# derivatives
+	imx = zeros(im.shape)
+	filters.gaussian_filter(im, (sigma,sigma), (0,1), imx) 
+	imy = zeros(im.shape)
+	filters.gaussian_filter(im, (sigma,sigma), (1,0), imy)
+	#Compute components of the Harris matrix
+	Wxx = filters.gaussian_filter(imx*imx,sigma) 
+	Wxy = filters.gaussian_filter(imx*imy,sigma) 
+	Wyy = filters.gaussian_filter(imy*imy,sigma)
+	#Determinant and trace
+	Wdet = Wxx*Wyy - Wxy**2
+	Wtr = Wxx + Wyy
+	return Wdet / Wtr
+
+def get_harris_points(harrisim,min_dist=10,threshold=0.1):
+	# find top corner candidates above a threshold
+	corner_threshold = harrisim.max() * threshold
+	harrisim_t = (harrisim > corner_threshold) * 1
+
+	# get coordinates of candidates
+	coords = array(harrisim_t.nonzero()).T # ...and their values
+	candidate_values = [harrisim[c[0],c[1]] for c in coords] # sort candidates
+	index = argsort(candidate_values)
+
+	# store allowed point locations in array 
+	allowed_locations = zeros(harrisim.shape) 
+	allowed_locations[min_dist:-min_dist,min_dist:-min_dist] = 1
+	
+	# select the best points taking min_distance into account
+	filtered_coords = [] 
+	for i in index:
+		if allowed_locations[coords[i,0],coords[i,1]] == 1:
+			filtered_coords.append(coords[i]) 
+			allowed_locations[(coords[i,0]-min_dist):(coords[i,0]+min_dist),
+			(coords[i,1]-min_dist):(coords[i,1]+min_dist)] = 0 
+	return filtered_coords
+
+def plot_harris_points(image,filtered_coords):
+	figure()
+	gray()
+	imshow(image)
+	plot([p[1] for p in filtered_coords], [p[0] for p in filtered_coords] ,'*') 
+	axis('off')	
+	show()
+
 def main():
+    #edge detection
+    # load the image and compute the ratio of the old height
+    # to the new height, clone it, and resize it
+    image = np.array(Image.open('../Images/TestSetClasiffier/Plate_11.png').convert('L'))
+
+    # convert the image to grayscale, blur it, and find edges in the image
+    gray = cv2.GaussianBlur(image, (5, 5), 0)
+    maxEdges = np.max(gray)
+    normEdges = abs(gray/(maxEdges * 1.00)) # normalization
+    binarizationTreshold = 0.5
+    binaryImage = 1*(normEdges>binarizationTreshold)
+    harrisim = compute_harris_response(binaryImage) 
+    filtered_coords = get_harris_points(harrisim, 4)
+
+    points = []
+    maxSum = 0
+    minSum = 10000
+    maxDiff = 0
+    minDiff = 10000
+
+    for element in filtered_coords:
+    	s = element[0]+element[1]
+    	d = element[1]-element[0]
+    	if s > maxSum:
+    		pointsSum = element
+    		maxSum = s
+    	if s < minSum:
+    		pointsMinSum = element
+    		minSum = s
+    	if d > maxDiff:
+    		pointsDiff = element
+    		maxDiff = d
+    	if d < minDiff:
+    		pointsMinDiff = element
+    		minDiff = d
+
+    points.append(pointsMinSum)
+    points.append(pointsSum)
+    points.append(pointsDiff)
+    points.append(pointsMinDiff)
+    pointsNp = np.asarray(points)
+    plot_harris_points(image, points)
+    warped = fourPointsTransform(image, pointsNp)
+
+    # plt.subplot(2, 2, 1)
+    # plt.imshow(image, cmap = cm.Greys_r)
+    # plt.xticks([]), plt.yticks([])
+    # plt.subplot(2, 2, 2)
+    # plt.imshow(warped, cmap = cm.Greys_r)
+    # plt.xticks([]), plt.yticks([])
+    # plt.show()
     return 0
 
 if __name__=='__main__':
