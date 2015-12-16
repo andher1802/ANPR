@@ -30,7 +30,7 @@ def orderPoints(pts):
 
 def fourPointsTransform(image, pts):
     #Order points
-    print pts
+    # print pts
     rect = orderPoints(pts)
     (tl, tr, br, bl) = rect
     #Compute distances
@@ -101,16 +101,17 @@ def main():
     #edge detection
     # load the image and compute the ratio of the old height
     # to the new height, clone it, and resize it
-    image = np.array(Image.open('../Images/TestSetClasiffier/Plate_1.png').convert('L'))
+    # image = np.array(Image.open('../Images/TestSetClasiffier/Plate_1.png').convert('L'))
 
     dirpath = '../Images/TestSetSegmentation/'
+    dirpathOut = '../Images/TestSetSegmentationOut/' 
     filePDDI = []
 
     for dirpath, dirname, filename in walk(dirpath):
         filePDDI.extend(filename)
 
-    for element in filePDDI[:]:
-        filename = dirpath+element
+    for elementFile in filePDDI[:5]:
+        filename = dirpath+elementFile
         ### Reading of the image and transforming it into an array for mathematical operations
         image = np.array(Image.open(filename).convert('L'))
 
@@ -119,10 +120,16 @@ def main():
         maxEdges = np.max(gray)
         normEdges = abs(gray/(maxEdges * 1.00)) # normalization
         kernel = np.ones((10,5),np.uint8)
-        binaryImage = cv2.dilate(normEdges,kernel,iterations = 1)
+        # binaryImage = cv2.dilate(normEdges,kernel,iterations = 1)
+
+        cannyEnchanced = cv2.Canny(image,2,2)
+        sobelyEnchanced = cv2.Sobel(cannyEnchanced,cv2.CV_64F,0,1,ksize=3)
 
         binarizationTreshold = 0.6
         binaryImage = 1*(normEdges>binarizationTreshold)
+
+        kernel = np.ones((5,5),np.uint8)
+        binaryImage = cv2.dilate(normEdges,kernel,iterations = 1)
 
         harrisim = compute_harris_response(binaryImage) 
         filtered_coords = get_harris_points(harrisim, 4)
@@ -154,7 +161,7 @@ def main():
         points.append(pointsDiff)
         points.append(pointsMinDiff)
         pointsNp = np.asarray(points)
-        plot_harris_points(image, points)
+        # plot_harris_points(image, points)
 
         listPoints = []
         for element in points:
@@ -162,20 +169,27 @@ def main():
             listPoints.append(tempTuple)
 
         warped = fourPointsTransform(image, listPoints)
+        small = cv2.resize(warped, (0,0), fx=3, fy=3) 
 
-        # plt.subplot(2, 2, 1)
-        # plt.imshow(image, cmap = cm.Greys_r)
-        # plt.xticks([]), plt.yticks([])
-        # plt.subplot(2, 2, 2)
-        # plt.imshow(binaryImage, cmap = cm.Greys_r)
-        # plt.xticks([]), plt.yticks([])
-        # plt.subplot(2, 2, 3)
-        # plt.imshow(warped, cmap = cm.Greys_r)
-        # plt.xticks([]), plt.yticks([])
-        # plt.show()
+        #outFileName = dirpathOut+string.split(elementFile,'.')[0]+'Segmented.png'
+        #cv2.imwrite(outFileName, small)
 
-        cv2.imshow("Warped", warped)
-        cv2.waitKey(0)
+        plt.subplot(2, 2, 1)
+        plt.imshow(image, cmap = cm.Greys_r)
+        plt.xticks([]), plt.yticks([])
+        plt.subplot(2, 2, 2)
+        plt.imshow(binaryImage, cmap = cm.Greys_r)
+        plt.xticks([]), plt.yticks([])
+        plt.subplot(2, 2, 3)
+        plt.imshow(warped, cmap = cm.Greys_r)
+        plt.xticks([]), plt.yticks([])
+        plt.subplot(2, 2, 4)
+        plt.imshow(sobelyEnchanced, cmap = cm.Greys_r)
+        plt.xticks([]), plt.yticks([])
+        plt.show()
+
+        # cv2.imshow("Warped", warped)
+        # cv2.waitKey(0)
     return 0
 
 if __name__=='__main__':
